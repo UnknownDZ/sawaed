@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>البروفايل - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #ff6b35, #f7b32b);
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        .jobs-list {
+            margin-top: 30px;
+        }
+        .job-item {
+            background: #f5f7fb;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        .job-item:hover {
+            transform: translateX(-5px);
+        }
+        .job-item a {
+            text-decoration: none;
+        }
+        .job-item h4 {
+            color: #ff6b35;
+            margin-bottom: 5px;
+        }
+        body.dark-mode .job-item {
+            background: #2a3148;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+            <a href="all-jobs.html" class="btn-secondary">📋 جميع الإعلانات</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div id="profileContent" class="card" style="max-width: 900px; margin: 40px auto;">
+        <div style="text-align: center; padding: 50px;">جاري التحميل...</div>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/database.js"></script>
+<script>
+    async function loadProfile() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let userEmail = urlParams.get('email');
+        
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        
+        if (!userEmail && !currentUser.email) {
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        if (!userEmail) {
+            userEmail = currentUser.email;
+        }
+        
+        const user = await getUserByEmail(userEmail);
+        if (!user) {
+            document.getElementById('profileContent').innerHTML = '<div style="text-align:center;padding:50px;">❌ المستخدم غير موجود</div>';
+            return;
+        }
+        
+        const isOwner = currentUser.email === user.email;
+        const userJobs = await getUserJobs(user.email);
+        
+        let jobsHtml = '';
+        if (userJobs.length > 0) {
+            jobsHtml = `
+                <div class="jobs-list">
+                    <h3>📌 إعلانات المستخدم (${userJobs.length})</h3>
+                    ${userJobs.map(job => `
+                        <div class="job-item">
+                            <a href="job-details.html?id=${job.id}">
+                                <h4>${job.title}</h4>
+                                <p style="color: #666;">💰 ${job.price} دولار | 📍 ${job.location}</p>
+                            </a>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            jobsHtml = '<p style="color: #888; text-align: center;">لا توجد إعلانات حالياً</p>';
+        }
+        
+        let contactHtml = `
+            <div class="contact-methods" style="margin-top: 20px;">
+                <h3>📞 طرق التواصل</h3>
+                <div class="contact-icons">
+                    <a href="https://wa.me/${user.phone.replace(/[^0-9]/g, '')}" target="_blank">📱 واتساب</a>
+                    ${user.telegram ? `<a href="https://t.me/${user.telegram.replace('@', '')}" target="_blank">✈️ تيليغرام</a>` : ''}
+                    <a href="mailto:${user.email}">📧 بريد إلكتروني</a>
+                    <a href="tel:${user.phone}">📞 اتصال مباشر</a>
+                </div>
+            </div>
+        `;
+        
+        const html = `
+            <div style="text-align: center;">
+                <div class="profile-avatar">👤</div>
+                <h2>${user.name}</h2>
+                <p>📍 ${user.location || 'لم يحدد الموقع'}</p>
+                ${user.bio ? `<p style="margin: 15px 0; line-height: 1.6;">📝 ${user.bio}</p>` : ''}
+                
+                ${!isOwner ? `
+                    <div style="margin: 15px 0;">
+                        <button id="startChatBtn" class="btn-primary" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            💬 مراسلة
+                        </button>
+                    </div>
+                ` : ''}
+                
+                ${contactHtml}
+                
+                <hr style="margin: 30px 0;">
+                <h3>📊 إحصائيات</h3>
+                <p>📢 عدد الإعلانات: ${userJobs.length}</p>
+                ${jobsHtml}
+            </div>
+        `;
+        
+        document.getElementById('profileContent').innerHTML = html;
+        
+        if (!isOwner) {
+            const chatBtn = document.getElementById('startChatBtn');
+            if (chatBtn) {
+                chatBtn.onclick = async () => {
+                    if (!currentUser.email) {
+                        alert('يرجى تسجيل الدخول أولاً');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    const conversation = await createConversation(currentUser.email, user.email);
+                    window.location.href = `chat.html?convId=${conversation.id}`;
+                };
+            }
+        }
+    }
+    
+    loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جميع الإعلانات - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <style>
+        .jobs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .job-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        .job-card-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #f0f4f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        .job-card-content {
+            padding: 20px;
+        }
+        .job-card-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ff6b35;
+        }
+        .job-card-price {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #1a2a3a;
+            margin: 10px 0;
+        }
+        .job-card-location {
+            color: #6c7a8a;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .job-card-user {
+            font-size: 13px;
+            color: #6c7a8a;
+            border-top: 1px solid #e0e6ed;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .no-jobs {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 20px;
+        }
+        .loading-spinner {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #ff6b35;
+        }
+        body.dark-mode .job-card {
+            background: #1e2438;
+        }
+        body.dark-mode .job-card-price {
+            color: #ff8c5a;
+        }
+        body.dark-mode .job-card-location,
+        body.dark-mode .job-card-user {
+            color: #8a94b0;
+        }
+        body.dark-mode .job-card-user {
+            border-top-color: #2a3148;
+        }
+        body.dark-mode .no-jobs {
+            background: #1e2438;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+            <a href="post-job.html" class="btn-primary">+ إعلان جديد</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <a href="public-profile.html" class="btn-secondary">👤 بروفايلي</a>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <h2 style="margin: 20px 0;">📢 جميع الإعلانات</h2>
+    <div id="jobsContainer" class="jobs-grid">
+        <div class="loading-spinner">جاري التحميل...</div>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-database.js"></script>
+<script>
+    async function loadAllJobs() {
+        const container = document.getElementById('jobsContainer');
+        
+        try {
+            const jobs = await getAllJobs();
+            
+            if (!jobs || jobs.length === 0) {
+                container.innerHTML = `
+                    <div class="no-jobs">
+                        📭 لا توجد إعلانات حالياً<br>
+                        <a href="post-job.html" class="btn-primary" style="display: inline-block; margin-top: 15px;">+ أضف أول إعلان</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            for (const job of jobs) {
+                const user = await getUserByEmail(job.email);
+                const firstImage = job.images && job.images[0] ? job.images[0] : null;
+                
+                const card = document.createElement('div');
+                card.className = 'job-card';
+                card.onclick = () => window.location.href = `job-details.html?id=${job.id}`;
+                
+                card.innerHTML = `
+                    ${firstImage ? `<img src="${firstImage}" class="job-card-image" style="object-fit: cover;" alt="${job.title}">` : '<div class="job-card-image">📷</div>'}
+                    <div class="job-card-content">
+                        <div class="job-card-title">${job.title}</div>
+                        <div class="job-card-price">💰 ${job.price} دولار</div>
+                        <div class="job-card-location">📍 ${job.location}</div>
+                        <div class="job-card-user">👤 ${user?.name || job.email}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        } catch(error) {
+            console.error(error);
+            container.innerHTML = '<div class="no-jobs">❌ حدث خطأ في تحميل الإعلانات</div>';
+        }
+    }
+    
+    loadAllJobs();
+</script>
+</body>
+</html>

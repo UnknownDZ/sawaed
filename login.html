@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="auth-container">
+        <h2 style="text-align: center;">🔐 تسجيل الدخول</h2>
+        <form id="loginForm">
+            <div>
+                <label>📧 البريد الإلكتروني</label>
+                <input type="email" id="loginEmail" required placeholder="example@domain.com">
+            </div>
+            <div>
+                <label>🔑 كلمة المرور</label>
+                <input type="password" id="loginPassword" required placeholder="********">
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%;">دخول</button>
+            <p style="text-align: center; margin-top: 20px;">
+                ليس لديك حساب؟ <a href="register.html">أنشئ حساباً</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-database.js"></script>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        try {
+            const user = await loginUser(email, password);
+            alert(`✅ مرحباً ${user.name}`);
+            window.location.href = 'index.html';
+        } catch(error) {
+            alert('❌ خطأ: ' + error);
+        }
+    });
+</script>
+</body>
+</html>

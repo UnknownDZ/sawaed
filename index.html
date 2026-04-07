@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصتي - الرئيسية</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="all-jobs.html" class="btn-secondary">📋 جميع الإعلانات</a>
+            <a href="post-job.html" class="btn-primary">+ إعلان جديد</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <a href="public-profile.html" class="btn-secondary">👤 بروفايلي</a>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="hero">
+        <h2>مرحباً بك في منصتي</h2>
+        <p>أضف إعلانك بسهولة وتواصل مع الآخرين</p>
+        <a href="post-job.html" class="btn-large">+ أضف إعلانك الآن</a>
+    </div>
+
+    <div class="contact-methods">
+        <h3>📞 تواصل معنا</h3>
+        <div class="contact-icons">
+            <a href="https://wa.me/+213774221882" target="_blank">📱 واتساب</a>
+            <a href="https://t.me/Akadidodz" target="_blank">✈️ تيليغرام</a>
+            <a href="mailto:s-amraoui@univ-dbkm.dz">📧 بريد إلكتروني</a>
+            <a href="tel:+213774221882">📞 اتصال مباشر</a>
+        </div>
+    </div>
+
+    <div class="stats-card">
+        <h3>📊 إحصائيات الموقع</h3>
+        <p>عدد الزوار: <span id="visitorCount">جاري التحميل...</span></p>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/visitor-counter.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

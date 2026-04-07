@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إضافة إعلان جديد - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    <style>
+        .image-preview-item {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+        .image-preview-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #ff6b35;
+        }
+        .remove-image {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 20px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-family: inherit;
+        }
+        .image-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .image-upload-area:hover {
+            border-color: #ff6b35;
+            background: #fff5f0;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+            font-size: 20px;
+        }
+        body.dark-mode .form-group input,
+        body.dark-mode .form-group textarea {
+            background: #2a3148;
+            border-color: #3a4158;
+            color: white;
+        }
+        body.dark-mode .image-upload-area {
+            border-color: #3a4158;
+        }
+        body.dark-mode .image-upload-area:hover {
+            border-color: #ff6b35;
+            background: #2a3148;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+            <a href="all-jobs.html" class="btn-secondary">📋 جميع الإعلانات</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <a href="public-profile.html" class="btn-secondary">👤 بروفايلي</a>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="card" style="max-width: 800px; margin: 40px auto;">
+        <h2 style="text-align: center; margin-bottom: 30px;">📝 إعلان جديد</h2>
+        
+        <form id="jobForm">
+            <div class="form-group">
+                <label>عنوان الإعلان *</label>
+                <input type="text" id="jobTitle" required placeholder="مثال: مصمم جرافيك محترف">
+            </div>
+
+            <div class="form-group">
+                <label>الوصف *</label>
+                <textarea id="jobDesc" rows="5" required placeholder="صف خدمتك أو منتجك بالتفصيل..."></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group">
+                    <label>السعر (دولار) *</label>
+                    <input type="number" id="jobPrice" required placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>الموقع *</label>
+                    <input type="text" id="jobLocation" required placeholder="مثال: الجزائر، العاصمة">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>📸 صور الإعلان (اختياري، حد أقصى 5 صور)</label>
+                <div class="image-upload-area" id="imageUploadArea">
+                    <div>📷 انقر هنا لاختيار الصور</div>
+                    <div style="font-size: 12px; color: #888;">JPG, PNG, WEBP | الحد الأقصى 2MB لكل صورة</div>
+                </div>
+                <input type="file" id="imageUpload" accept="image/jpeg,image/png,image/webp" multiple style="display: none;">
+                <div id="imagePreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;"></div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn-large" id="submitBtn">📢 نشر الإعلان</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-database.js"></script>
+<script>
+    let selectedImages = [];
+    let selectedFiles = [];
+
+    const imageUpload = document.getElementById('imageUpload');
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    const imagePreview = document.getElementById('imagePreview');
+
+    imageUploadArea.onclick = () => imageUpload.click();
+
+    imageUpload.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        
+        if (selectedImages.length + files.length > 5) {
+            alert('لا يمكن رفع أكثر من 5 صور');
+            return;
+        }
+
+        files.forEach(file => {
+            if (file.size > 2 * 1024 * 1024) {
+                alert(`الصورة ${file.name} حجمها يتجاوز 2MB`);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                selectedImages.push({
+                    name: file.name,
+                    data: event.target.result,
+                    file: file
+                });
+                selectedFiles.push(file);
+                displayImages();
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        imageUpload.value = '';
+    });
+
+    function displayImages() {
+        imagePreview.innerHTML = '';
+        selectedImages.forEach((img, index) => {
+            const div = document.createElement('div');
+            div.className = 'image-preview-item';
+            div.innerHTML = `
+                <img src="${img.data}" alt="صورة">
+                <div class="remove-image" data-index="${index}">×</div>
+            `;
+            imagePreview.appendChild(div);
+        });
+
+        document.querySelectorAll('.remove-image').forEach(btn => {
+            btn.onclick = function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                selectedImages.splice(index, 1);
+                selectedFiles.splice(index, 1);
+                displayImages();
+            };
+        });
+    }
+
+    const jobForm = document.getElementById('jobForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    jobForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'جاري رفع الصور...';
+        
+        // إضافة طبقة تحميل
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-overlay';
+        loadingDiv.innerHTML = '<div>📤 جاري رفع الإعلان...<br><small>قد يستغرق بضع ثوان</small></div>';
+        document.body.appendChild(loadingDiv);
+        
+        const currentUserStr = localStorage.getItem('currentUser');
+        if (!currentUserStr) {
+            alert('يرجى تسجيل الدخول أولاً');
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        const currentUser = JSON.parse(currentUserStr);
+        
+        // رفع الصور إلى Firebase Storage
+        const imageUrls = [];
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const path = `jobs/${Date.now()}_${i}_${file.name}`;
+            try {
+                const url = await uploadImage(file, path);
+                imageUrls.push(url);
+            } catch(error) {
+                alert('خطأ في رفع الصورة: ' + file.name);
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📢 نشر الإعلان';
+                loadingDiv.remove();
+                return;
+            }
+        }
+        
+        const jobData = {
+            title: document.getElementById('jobTitle').value.trim(),
+            description: document.getElementById('jobDesc').value.trim(),
+            price: parseFloat(document.getElementById('jobPrice').value),
+            location: document.getElementById('jobLocation').value.trim(),
+            images: imageUrls,
+            email: currentUser.email,
+            userName: currentUser.name
+        };
+        
+        if (!jobData.title || !jobData.description || !jobData.price || !jobData.location) {
+            alert('يرجى ملء جميع الحقول المطلوبة');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '📢 نشر الإعلان';
+            loadingDiv.remove();
+            return;
+        }
+        
+        try {
+            submitBtn.textContent = 'جاري النشر...';
+            const jobId = await saveJob(jobData);
+            alert('✅ تم نشر الإعلان بنجاح!');
+            window.location.href = `job-details.html?id=${jobId}`;
+        } catch(error) {
+            console.error(error);
+            alert('❌ حدث خطأ: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = '📢 نشر الإعلان';
+            loadingDiv.remove();
+        }
+    });
+</script>
+</body>
+</html>

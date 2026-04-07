@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقييم المستخدم - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .rating-container {
+            max-width: 600px;
+            margin: 40px auto;
+        }
+        .stars {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .star {
+            font-size: 48px;
+            cursor: pointer;
+            color: #ddd;
+            transition: color 0.2s;
+        }
+        .star.selected {
+            color: #ffc107;
+        }
+        .star:hover {
+            color: #ffc107;
+        }
+        .rating-form textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .existing-rating {
+            background: #f0f4f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .existing-stars {
+            display: inline-flex;
+            gap: 5px;
+        }
+        .existing-stars .star-static {
+            font-size: 24px;
+            color: #ffc107;
+        }
+        body.dark-mode .rating-form textarea {
+            background: #2a3148;
+            border-color: #3a4158;
+            color: white;
+        }
+        body.dark-mode .existing-rating {
+            background: #2a3148;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+            <a href="all-jobs.html" class="btn-secondary">📋 جميع الإعلانات</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <a href="public-profile.html" class="btn-secondary">👤 بروفايلي</a>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="rating-container card">
+        <h2 style="text-align: center;">⭐ تقييم المستخدم</h2>
+        <div id="ratingContent">
+            <div class="loading-spinner">جاري التحميل...</div>
+        </div>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/database.js"></script>
+<script>
+    let selectedRating = 0;
+    let ratedUserEmail = null;
+    let jobId = null;
+
+    async function loadRatingPage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        jobId = urlParams.get('jobId');
+        ratedUserEmail = urlParams.get('userEmail');
+        
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        
+        if (!currentUser.email) {
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        if (!jobId || !ratedUserEmail) {
+            document.getElementById('ratingContent').innerHTML = '<div style="text-align:center;padding:50px;">❌ رابط غير صالح</div>';
+            return;
+        }
+        
+        if (currentUser.email === ratedUserEmail) {
+            document.getElementById('ratingContent').innerHTML = '<div style="text-align:center;padding:50px;">❌ لا يمكنك تقييم نفسك</div>';
+            return;
+        }
+        
+        const existingRating = await getRatingForJob(parseInt(jobId), currentUser.email);
+        const job = await getJobById(parseInt(jobId));
+        const ratedUser = await getUserByEmail(ratedUserEmail);
+        
+        if (existingRating) {
+            document.getElementById('ratingContent').innerHTML = `
+                <div class="existing-rating">
+                    <h3>لقد قيمت هذا المستخدم بالفعل</h3>
+                    <div class="existing-stars">
+                        ${'⭐'.repeat(existingRating.rating)}${'☆'.repeat(5-existingRating.rating)}
+                    </div>
+                    <p>${existingRating.comment || 'لا يوجد تعليق'}</p>
+                    <a href="job-details.html?id=${jobId}" class="btn-secondary">← العودة للإعلان</a>
+                </div>
+            `;
+            return;
+        }
+        
+        document.getElementById('ratingContent').innerHTML = `
+            <div style="text-align: center;">
+                <p>تقييم المستخدم: <strong>${ratedUser?.name || ratedUserEmail}</strong></p>
+                <p>عن الإعلان: <strong>${job?.title}</strong></p>
+            </div>
+            <div class="stars" id="starsContainer">
+                <span class="star" data-value="1">☆</span>
+                <span class="star" data-value="2">☆</span>
+                <span class="star" data-value="3">☆</span>
+                <span class="star" data-value="4">☆</span>
+                <span class="star" data-value="5">☆</span>
+            </div>
+            <div class="rating-form">
+                <textarea id="comment" rows="4" placeholder="اكتب تعليقك هنا (اختياري)..."></textarea>
+                <button id="submitRating" class="btn-large" style="width:100%; margin-top:20px;">⭐ إرسال التقييم</button>
+            </div>
+        `;
+        
+        // إضافة حدث النجوم
+        const stars = document.querySelectorAll('.star');
+        stars.forEach(star => {
+            star.onclick = () => {
+                selectedRating = parseInt(star.getAttribute('data-value'));
+                stars.forEach((s, i) => {
+                    if (i < selectedRating) {
+                        s.textContent = '★';
+                        s.classList.add('selected');
+                    } else {
+                        s.textContent = '☆';
+                        s.classList.remove('selected');
+                    }
+                });
+            };
+        });
+        
+        document.getElementById('submitRating').onclick = async () => {
+            if (selectedRating === 0) {
+                alert('يرجى اختيار عدد النجوم');
+                return;
+            }
+            
+            const comment = document.getElementById('comment').value;
+            
+            try {
+                await addRating(ratedUserEmail, currentUser.email, parseInt(jobId), selectedRating, comment);
+                alert('✅ تم إرسال التقييم بنجاح');
+                window.location.href = `job-details.html?id=${jobId}`;
+            } catch(error) {
+                alert('❌ ' + error);
+            }
+        };
+    }
+    
+    loadRatingPage();
+</script>
+</body>
+</html>

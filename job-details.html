@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الإعلان - منصتي</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .job-image {
+            max-width: 100%;
+            border-radius: 15px;
+            margin: 10px 0;
+        }
+        .images-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #ff6b35;
+            text-align: center;
+        }
+        .badge {
+            background: #f0f4f9;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-block;
+        }
+        body.dark-mode .badge {
+            background: #2a3148;
+            color: #eef2ff;
+        }
+        .action-buttons {
+            margin-top: 30px;
+            text-align: center;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container header-flex">
+        <h1>منصتي</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="toggle-btn">🌙</button>
+            <a href="index.html" class="btn-secondary">🏠 الرئيسية</a>
+            <a href="all-jobs.html" class="btn-secondary">📋 جميع الإعلانات</a>
+            <a href="post-job.html" class="btn-primary">+ إعلان جديد</a>
+            <div id="authButtons">
+                <a href="login.html" class="btn-secondary">🔐 دخول</a>
+                <a href="register.html" class="btn-primary">➕ حساب جديد</a>
+            </div>
+            <div id="userMenu" style="display:none;">
+                <span id="userName" style="margin-left: 10px;"></span>
+                <a href="public-profile.html" class="btn-secondary">👤 بروفايلي</a>
+                <button id="logoutBtn" class="btn-outline">🚪 خروج</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div id="jobDetails" class="card" style="max-width: 900px; margin: 40px auto;">
+        <div class="loading-spinner">جاري التحميل...</div>
+    </div>
+</main>
+
+<footer class="container">
+    <p>جميع الحقوق محفوظة للطلبة ع.سيداحمد ش. يونس © 2026</p>
+</footer>
+
+<script src="js/dark-mode.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/database.js"></script>
+<script>
+    let currentJob = null;
+
+    function getJobIdFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id');
+    }
+
+    async function displayJobDetails() {
+        const jobId = getJobIdFromURL();
+        if (!jobId) {
+            document.getElementById('jobDetails').innerHTML = '<div class="loading-spinner">❌ لم يتم تحديد الإعلان</div>';
+            return;
+        }
+
+        const job = await getJobById(parseInt(jobId));
+        currentJob = job;
+
+        if (!job) {
+            document.getElementById('jobDetails').innerHTML = '<div class="loading-spinner">❌ الإعلان غير موجود</div>';
+            return;
+        }
+
+        const owner = await getUserByEmail(job.email);
+
+        let imagesHtml = '';
+        if (job.images && job.images.length > 0) {
+            imagesHtml = '<div class="images-gallery">';
+            job.images.forEach(img => {
+                imagesHtml += `<img src="${img}" class="job-image" alt="صورة الإعلان">`;
+            });
+            imagesHtml += '</div>';
+        }
+
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const isOwner = currentUser.email === job.email;
+
+        const html = `
+            <h2 style="color:#ff6b35; margin-bottom:20px;">${job.title}</h2>
+            
+            <div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:20px;">
+                <span class="badge">💰 ${job.price} دولار</span>
+                <span class="badge">📍 ${job.location}</span>
+                <span class="badge">👤 <a href="public-profile.html?email=${job.email}" style="color: inherit; text-decoration: none;">${owner?.name || job.email}</a></span>
+                <span class="badge">📅 ${new Date(job.createdAt).toLocaleDateString('ar')}</span>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h3>📝 الوصف</h3>
+                <p style="line-height:1.8;">${job.description}</p>
+            </div>
+            
+            ${imagesHtml}
+            
+            <div class="action-buttons">
+                <a href="all-jobs.html" class="btn-secondary">← العودة للإعلانات</a>
+                ${!isOwner ? `
+                    <button id="chatOwnerBtn" class="btn-primary" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                        💬 مراسلة البائع
+                    </button>
+                ` : ''}
+            </div>
+        `;
+
+        document.getElementById('jobDetails').innerHTML = html;
+        
+        if (!isOwner) {
+            const chatBtn = document.getElementById('chatOwnerBtn');
+            if (chatBtn) {
+                chatBtn.onclick = async () => {
+                    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                    if (!currentUser.email) {
+                        alert('يرجى تسجيل الدخول أولاً');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    if (currentUser.email === job.email) {
+                        alert('هذا إعلانك أنت');
+                        return;
+                    }
+                    
+                    try {
+                        const conversation = await createConversation(currentUser.email, job.email);
+                        window.location.href = `chat.html?convId=${conversation.id}`;
+                    } catch(error) {
+                        console.error(error);
+                        alert('حدث خطأ، يرجى المحاولة مرة أخرى');
+                    }
+                };
+            }
+        }
+    }
+
+    displayJobDetails();
+</script>
+</body>
+</html>
